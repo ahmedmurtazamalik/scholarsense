@@ -57,7 +57,7 @@ export default function ZoteroPage() {
               style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border-color)", background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 14 }}
             />
             <input
-              placeholder="Library ID"
+              placeholder="Library/User ID"
               value={libraryId}
               onChange={(e) => setLibraryId(e.target.value)}
               style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border-color)", background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 14 }}

@@ -3,7 +3,7 @@ import "./globals.css";
 import AppWrapper from "@/components/AppWrapper";
 
 export const metadata: Metadata = {
-  title: "Scolar Sense — AI-Powered Systematic Literature Review",
+  title: "Scholar Sense — AI-Powered Systematic Literature Review",
   description: "Structured, verifiable, multi-document analysis platform for systematic literature reviews",
 };
 

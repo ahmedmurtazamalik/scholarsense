@@ -82,7 +82,7 @@ export default function LoginPage() {
       >
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <h1 style={{ fontSize: 32, fontWeight: 800, margin: 0, letterSpacing: "-0.02em" }}>
-            <span className="gradient-text">Scolar</span>{" "}
+            <span className="gradient-text">Scholar</span>{" "}
             <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>Sense</span>
           </h1>
           <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>
