@@ -6,6 +6,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import engine, Base
 
+# Explicitly import all models to ensure they are registered with Base.metadata
+import app.models.user
+import app.models.paper
+import app.models.chunk
+import app.models.extraction
+import app.models.matrix
+import app.models.audit_log
+import app.models.zotero_mapping
+import app.models.screening
+import app.models.evaluation
+
 # Create all tables
 Base.metadata.create_all(bind=engine)
 
