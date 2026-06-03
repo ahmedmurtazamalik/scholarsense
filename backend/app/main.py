@@ -28,8 +28,9 @@ app.add_middleware(
 
 # ── Register routers ─────────────────────────────────────────────
 
-from app.routers import papers, zotero, extraction, matrix, screening, evaluation, synthesis, analytics, clusters
+from app.routers import auth, papers, zotero, extraction, matrix, screening, evaluation, synthesis, analytics, clusters
 
+app.include_router(auth.router, prefix="/api")
 app.include_router(papers.router, prefix="/api")
 app.include_router(zotero.router, prefix="/api")
 app.include_router(extraction.router, prefix="/api")       # Kept for backward compat

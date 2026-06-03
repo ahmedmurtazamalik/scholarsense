@@ -52,7 +52,7 @@ export default function MatrixPage() {
       </div>
 
       {/* Matrix table */}
-      {matrix?.data?.rows?.length > 0 && (
+      {matrix && matrix.data && matrix.data.rows && matrix.data.rows.length > 0 && (
         <div className="glass-card" style={{ overflow: "auto" }}>
           <table>
             <thead>

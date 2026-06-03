@@ -6,11 +6,13 @@ from sqlalchemy import func
 from app.models.extraction import ExtractionResult
 from app.models.paper import Paper
 
-_cached_conflicts = None
+# Cache for latest conflict results (keyed by user_id)
+_cached_conflicts: dict[str, list] = {}
 
 
 def detect_conflicts(
     db: Session,
+    user_id: str,
     field_name: str | None = None,
     schema_id: str | None = None,
 ) -> list[dict]:
@@ -24,7 +26,12 @@ def detect_conflicts(
     """
     global _cached_conflicts
 
-    query = db.query(ExtractionResult).filter(ExtractionResult.value.isnot(None))
+    query = (
+        db.query(ExtractionResult)
+        .join(Paper, ExtractionResult.paper_id == Paper.id)
+        .filter(Paper.user_id == user_id)
+        .filter(ExtractionResult.value.isnot(None))
+    )
 
     if field_name:
         query = query.filter(ExtractionResult.field_name == field_name)
@@ -61,7 +68,7 @@ def detect_conflicts(
             for val, group_results in values.items():
                 papers_info = []
                 for r in group_results:
-                    paper = db.query(Paper).filter(Paper.id == r.paper_id).first()
+                    paper = db.query(Paper).filter(Paper.id == r.paper_id, Paper.user_id == user_id).first()
                     papers_info.append({
                         "paper_id": r.paper_id,
                         "paper_title": paper.title if paper else "Unknown",
@@ -90,10 +97,10 @@ def detect_conflicts(
                 "details": detail,
             })
 
-    _cached_conflicts = conflicts
+    _cached_conflicts[user_id] = conflicts
     return conflicts
 
 
-def get_cached_conflicts():
-    """Return cached conflict results."""
-    return _cached_conflicts
+def get_cached_conflicts(user_id: str):
+    """Return cached conflict results for the user."""
+    return _cached_conflicts.get(user_id)

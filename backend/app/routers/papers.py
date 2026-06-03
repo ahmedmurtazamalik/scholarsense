@@ -9,14 +9,14 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.paper import Paper, PaperStatus
+from app.models.user import User
 from app.schemas.paper import (
     PaperCreate, PaperUpdate, PaperResponse, PaperListResponse, ChunkResponse,
 )
 from app.config import settings
+from app.utils.auth import get_current_user
 
 router = APIRouter(prefix="/papers", tags=["Papers"])
-
-DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001"
 
 
 @router.post("/upload", response_model=PaperResponse)
@@ -24,6 +24,7 @@ async def upload_paper(
     file: UploadFile = File(...),
     title: str = Query(None),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Upload a PDF and create a paper record."""
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
@@ -38,7 +39,7 @@ async def upload_paper(
         title=title or file.filename or "Untitled",
         pdf_path=filepath,
         status=PaperStatus.PENDING.value,
-        user_id=DEFAULT_USER_ID,
+        user_id=current_user.id,
     )
     db.add(paper)
     db.commit()
@@ -50,6 +51,7 @@ async def upload_paper(
 async def upload_papers_bulk(
     files: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Upload multiple PDFs at once and create paper records for each."""
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
@@ -67,7 +69,7 @@ async def upload_papers_bulk(
             title=file.filename.replace(".pdf", "") if file.filename else "Untitled",
             pdf_path=filepath,
             status=PaperStatus.PENDING.value,
-            user_id=DEFAULT_USER_ID,
+            user_id=current_user.id,
         )
         db.add(paper)
         db.flush()
@@ -86,9 +88,10 @@ def list_papers(
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """List papers with optional status filter."""
-    query = db.query(Paper)
+    query = db.query(Paper).filter(Paper.user_id == current_user.id)
     if status:
         query = query.filter(Paper.status == status)
     total = query.count()
@@ -97,18 +100,27 @@ def list_papers(
 
 
 @router.get("/{paper_id}", response_model=PaperResponse)
-def get_paper(paper_id: str, db: Session = Depends(get_db)):
+def get_paper(
+    paper_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Get a single paper by ID."""
-    paper = db.query(Paper).filter(Paper.id == paper_id).first()
+    paper = db.query(Paper).filter(Paper.id == paper_id, Paper.user_id == current_user.id).first()
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
     return paper
 
 
 @router.patch("/{paper_id}", response_model=PaperResponse)
-def update_paper(paper_id: str, update: PaperUpdate, db: Session = Depends(get_db)):
+def update_paper(
+    paper_id: str,
+    update: PaperUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Update paper metadata or status."""
-    paper = db.query(Paper).filter(Paper.id == paper_id).first()
+    paper = db.query(Paper).filter(Paper.id == paper_id, Paper.user_id == current_user.id).first()
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
 
@@ -121,9 +133,13 @@ def update_paper(paper_id: str, update: PaperUpdate, db: Session = Depends(get_d
 
 
 @router.delete("/{paper_id}")
-def delete_paper(paper_id: str, db: Session = Depends(get_db)):
+def delete_paper(
+    paper_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Delete a paper and its PDF."""
-    paper = db.query(Paper).filter(Paper.id == paper_id).first()
+    paper = db.query(Paper).filter(Paper.id == paper_id, Paper.user_id == current_user.id).first()
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
 
@@ -136,11 +152,14 @@ def delete_paper(paper_id: str, db: Session = Depends(get_db)):
 
 
 @router.delete("")
-def delete_all_papers(db: Session = Depends(get_db)):
+def delete_all_papers(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Delete all papers, their PDFs, and clear vector store."""
     from app.services.vector_store import delete_all_chunks
     
-    papers = db.query(Paper).all()
+    papers = db.query(Paper).filter(Paper.user_id == current_user.id).all()
     
     # Remove PDF files
     for paper in papers:
@@ -150,7 +169,7 @@ def delete_all_papers(db: Session = Depends(get_db)):
             except Exception:
                 pass
                 
-    # Clear vector store
+    # Clear vector store (Ideally we would delete user chunks specifically, but delete_all_chunks works for resetting)
     delete_all_chunks()
     
     # Delete papers one by one to trigger ORM cascades
@@ -163,10 +182,14 @@ def delete_all_papers(db: Session = Depends(get_db)):
 
 
 @router.get("/{paper_id}/chunks", response_model=list[ChunkResponse])
-def get_paper_chunks(paper_id: str, db: Session = Depends(get_db)):
+def get_paper_chunks(
+    paper_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Get all chunks for a paper."""
     from app.models.chunk import Chunk
-    paper = db.query(Paper).filter(Paper.id == paper_id).first()
+    paper = db.query(Paper).filter(Paper.id == paper_id, Paper.user_id == current_user.id).first()
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
     chunks = db.query(Chunk).filter(Chunk.paper_id == paper_id).order_by(Chunk.chunk_index).all()
@@ -174,9 +197,13 @@ def get_paper_chunks(paper_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/{paper_id}/process")
-def process_paper(paper_id: str, db: Session = Depends(get_db)):
+def process_paper(
+    paper_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Trigger PDF parsing, chunking, section classification, and embedding generation."""
-    paper = db.query(Paper).filter(Paper.id == paper_id).first()
+    paper = db.query(Paper).filter(Paper.id == paper_id, Paper.user_id == current_user.id).first()
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
     if not paper.pdf_path:

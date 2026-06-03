@@ -18,15 +18,17 @@ def run_screening(
     db: Session,
     criteria_id: str,
     paper_ids: list[str] | None = None,
+    user_id: str | None = None,
 ) -> list[dict]:
     """
     Run screening on papers using the specified criteria.
 
     Returns list of per-paper results with filter scores.
     """
-    criteria = db.query(ScreeningCriteria).filter(
-        ScreeningCriteria.id == criteria_id
-    ).first()
+    criteria_query = db.query(ScreeningCriteria).filter(ScreeningCriteria.id == criteria_id)
+    if user_id:
+        criteria_query = criteria_query.filter(ScreeningCriteria.user_id == user_id)
+    criteria = criteria_query.first()
     if not criteria:
         raise ValueError(f"Screening criteria {criteria_id} not found")
 
@@ -34,10 +36,14 @@ def run_screening(
     threshold = criteria.threshold or settings.SCREENING_THRESHOLD
 
     # Get papers to screen
+    paper_query = db.query(Paper)
+    if user_id:
+        paper_query = paper_query.filter(Paper.user_id == user_id)
+
     if paper_ids:
-        papers = db.query(Paper).filter(Paper.id.in_(paper_ids)).all()
+        papers = paper_query.filter(Paper.id.in_(paper_ids)).all()
     else:
-        papers = db.query(Paper).filter(
+        papers = paper_query.filter(
             Paper.status.in_([PaperStatus.PENDING.value, PaperStatus.PROCESSED.value])
         ).all()
 

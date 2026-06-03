@@ -5,8 +5,19 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("token");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...options?.headers },
+    headers: { ...headers, ...options?.headers },
     ...options,
   });
   if (!res.ok) {
@@ -41,14 +52,28 @@ export const papersApi = {
     const form = new FormData();
     form.append("file", file);
     const url = `${API_BASE}/papers/upload${title ? `?title=${encodeURIComponent(title)}` : ""}`;
-    const res = await fetch(url, { method: "POST", body: form });
+    
+    const headers: Record<string, string> = {};
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("token");
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(url, { method: "POST", headers, body: form });
     if (!res.ok) throw new Error("Upload failed");
     return res.json() as Promise<Paper>;
   },
   uploadBulk: async (files: File[]) => {
     const form = new FormData();
     files.forEach((f) => form.append("files", f));
-    const res = await fetch(`${API_BASE}/papers/upload/bulk`, { method: "POST", body: form });
+
+    const headers: Record<string, string> = {};
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("token");
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(`${API_BASE}/papers/upload/bulk`, { method: "POST", headers, body: form });
     if (!res.ok) throw new Error("Bulk upload failed");
     return res.json() as Promise<Paper[]>;
   },
@@ -309,6 +334,24 @@ export const clustersApi = {
   get: () => request<Cluster[]>("/clusters"),
 };
 
+// ── Conflicts ─────────────────────────────────────────────────────
+
+export interface Conflict {
+  topic: string;
+  conflict: boolean;
+  papers: any[];
+  details: string;
+}
+
+export const conflictsApi = {
+  detect: (fieldName?: string, schemaId?: string) =>
+    request<Conflict[]>("/conflicts/detect", {
+      method: "POST",
+      body: JSON.stringify({ field_name: fieldName, schema_id: schemaId }),
+    }),
+  get: () => request<Conflict[]>("/conflicts"),
+};
+
 // ── Zotero ────────────────────────────────────────────────────────
 
 export const zoteroApi = {
@@ -323,4 +366,37 @@ export const zoteroApi = {
       method: "POST",
       body: JSON.stringify({ collection_key: collectionKey }),
     }),
+};
+
+// ── Auth ──────────────────────────────────────────────────────────
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  created_at: string;
+}
+
+export const authApi = {
+  login: async (email: string, password: string) => {
+    const params = new URLSearchParams();
+    params.append("username", email);
+    params.append("password", password);
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Login failed" }));
+      throw new Error(err.detail || "Login failed");
+    }
+    return res.json() as Promise<{ access_token: string; token_type: string }>;
+  },
+  register: (name: string, email: string, password: string) =>
+    request<User>(`/auth/register`, {
+      method: "POST",
+      body: JSON.stringify({ name, email, password }),
+    }),
+  me: () => request<User>(`/auth/me`),
 };

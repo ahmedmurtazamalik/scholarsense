@@ -5,25 +5,30 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.screening import ScreeningCriteria, ScreeningResult
+from app.models.user import User
+from app.models.paper import Paper
 from app.schemas.screening import (
     ScreeningCriteriaCreate, ScreeningCriteriaUpdate, ScreeningCriteriaResponse,
     ScreeningRunRequest, ScreeningRunResponse, ScreeningResultResponse,
 )
+from app.utils.auth import get_current_user
 
 router = APIRouter(prefix="/screening", tags=["Screening"])
 
-DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001"
-
 
 @router.post("/criteria", response_model=ScreeningCriteriaResponse)
-def create_criteria(req: ScreeningCriteriaCreate, db: Session = Depends(get_db)):
+def create_criteria(
+    req: ScreeningCriteriaCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Create screening criteria with dynamic filters."""
     criteria = ScreeningCriteria(
         name=req.name,
         description=req.description,
         criteria_definition=req.criteria_definition,
         threshold=req.threshold,
-        user_id=DEFAULT_USER_ID,
+        user_id=current_user.id,
     )
     db.add(criteria)
     db.commit()
@@ -32,16 +37,24 @@ def create_criteria(req: ScreeningCriteriaCreate, db: Session = Depends(get_db))
 
 
 @router.get("/criteria", response_model=list[ScreeningCriteriaResponse])
-def list_criteria(db: Session = Depends(get_db)):
-    """List all screening criteria."""
-    return db.query(ScreeningCriteria).all()
+def list_criteria(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List all screening criteria for the user."""
+    return db.query(ScreeningCriteria).filter(ScreeningCriteria.user_id == current_user.id).all()
 
 
 @router.get("/criteria/{criteria_id}", response_model=ScreeningCriteriaResponse)
-def get_criteria(criteria_id: str, db: Session = Depends(get_db)):
+def get_criteria(
+    criteria_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Get a specific screening criteria."""
     criteria = db.query(ScreeningCriteria).filter(
-        ScreeningCriteria.id == criteria_id
+        ScreeningCriteria.id == criteria_id,
+        ScreeningCriteria.user_id == current_user.id
     ).first()
     if not criteria:
         raise HTTPException(status_code=404, detail="Criteria not found")
@@ -49,10 +62,16 @@ def get_criteria(criteria_id: str, db: Session = Depends(get_db)):
 
 
 @router.patch("/criteria/{criteria_id}", response_model=ScreeningCriteriaResponse)
-def update_criteria(criteria_id: str, req: ScreeningCriteriaUpdate, db: Session = Depends(get_db)):
+def update_criteria(
+    criteria_id: str,
+    req: ScreeningCriteriaUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Update existing screening criteria."""
     criteria = db.query(ScreeningCriteria).filter(
-        ScreeningCriteria.id == criteria_id
+        ScreeningCriteria.id == criteria_id,
+        ScreeningCriteria.user_id == current_user.id
     ).first()
     if not criteria:
         raise HTTPException(status_code=404, detail="Criteria not found")
@@ -67,10 +86,15 @@ def update_criteria(criteria_id: str, req: ScreeningCriteriaUpdate, db: Session 
 
 
 @router.delete("/criteria/{criteria_id}")
-def delete_criteria(criteria_id: str, db: Session = Depends(get_db)):
+def delete_criteria(
+    criteria_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Delete screening criteria and its results."""
     criteria = db.query(ScreeningCriteria).filter(
-        ScreeningCriteria.id == criteria_id
+        ScreeningCriteria.id == criteria_id,
+        ScreeningCriteria.user_id == current_user.id
     ).first()
     if not criteria:
         raise HTTPException(status_code=404, detail="Criteria not found")
@@ -80,12 +104,16 @@ def delete_criteria(criteria_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/run", response_model=ScreeningRunResponse)
-def run_screening(req: ScreeningRunRequest, db: Session = Depends(get_db)):
+def run_screening(
+    req: ScreeningRunRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Run coarse screening on papers using the specified criteria."""
     from app.services.screening_service import run_screening as do_screening
 
     try:
-        results = do_screening(db, req.criteria_id, req.paper_ids)
+        results = do_screening(db, req.criteria_id, req.paper_ids, user_id=current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -105,20 +133,20 @@ def get_results(
     criteria_id: str | None = None,
     passed_only: bool = False,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Get screening results, optionally filtered by criteria or pass status."""
-    query = db.query(ScreeningResult)
+    query = db.query(ScreeningResult).join(Paper, ScreeningResult.paper_id == Paper.id).filter(Paper.user_id == current_user.id)
     if criteria_id:
         query = query.filter(ScreeningResult.criteria_id == criteria_id)
     if passed_only:
         query = query.filter(ScreeningResult.passed == True)
 
     results = query.all()
-    from app.models.paper import Paper
 
     output = []
     for r in results:
-        paper = db.query(Paper).filter(Paper.id == r.paper_id).first()
+        paper = db.query(Paper).filter(Paper.id == r.paper_id, Paper.user_id == current_user.id).first()
         output.append(ScreeningResultResponse(
             paper_id=r.paper_id,
             title=paper.title if paper else "Unknown",

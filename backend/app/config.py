@@ -7,7 +7,12 @@ from typing import Optional
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "postgresql://postgres:admin@localhost:5433/slr_db"
+    DATABASE_URL: str = "sqlite:///./slr_db.sqlite"
+
+    # Auth
+    JWT_SECRET: str = "your-fallback-super-secret-key-for-jwt"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
 
     # LLM
     GROQ_API_KEY: Optional[str] = None

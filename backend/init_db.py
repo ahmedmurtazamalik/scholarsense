@@ -15,6 +15,8 @@ import app.models.matrix
 import app.models.audit_log
 import app.models.zotero_mapping
 
+from app.utils.auth import get_password_hash
+
 def init_db():
     print("Creating tables...")
     #Base.metadata.drop_all(bind=engine)
@@ -29,7 +31,8 @@ def init_db():
             user = User(
                 id=default_user_id, 
                 email='default@slr.local', 
-                name='Default User'
+                name='Default User',
+                hashed_password=get_password_hash('admin123')
             )
             db.add(user)
             db.commit()

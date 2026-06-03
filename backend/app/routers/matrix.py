@@ -8,15 +8,30 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.matrix import Matrix
+from app.models.extraction import ExtractionSchema
+from app.models.user import User
 from app.schemas.matrix import MatrixBuildRequest, MatrixResponse
+from app.utils.auth import get_current_user
 
 router = APIRouter(prefix="/matrix", tags=["Matrix"])
 
 
 @router.post("/build", response_model=MatrixResponse)
-def build_matrix(req: MatrixBuildRequest, db: Session = Depends(get_db)):
+def build_matrix(
+    req: MatrixBuildRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Build a papers × fields matrix from extraction results."""
     from app.services.matrix_builder import build_matrix_data
+
+    # Verify schema belongs to current user
+    schema = db.query(ExtractionSchema).filter(
+        ExtractionSchema.id == req.schema_id,
+        ExtractionSchema.user_id == current_user.id
+    ).first()
+    if not schema:
+        raise HTTPException(status_code=404, detail="Schema not found")
 
     data = build_matrix_data(db, req.schema_id, req.paper_ids)
 
@@ -32,18 +47,33 @@ def build_matrix(req: MatrixBuildRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/{matrix_id}", response_model=MatrixResponse)
-def get_matrix(matrix_id: str, db: Session = Depends(get_db)):
+def get_matrix(
+    matrix_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Get a stored matrix."""
-    matrix = db.query(Matrix).filter(Matrix.id == matrix_id).first()
+    matrix = db.query(Matrix).join(ExtractionSchema).filter(
+        Matrix.id == matrix_id,
+        ExtractionSchema.user_id == current_user.id
+    ).first()
     if not matrix:
         raise HTTPException(status_code=404, detail="Matrix not found")
     return matrix
 
 
 @router.get("/{matrix_id}/export")
-def export_matrix(matrix_id: str, format: str = "csv", db: Session = Depends(get_db)):
+def export_matrix(
+    matrix_id: str,
+    format: str = "csv",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Export matrix as CSV or JSON."""
-    matrix = db.query(Matrix).filter(Matrix.id == matrix_id).first()
+    matrix = db.query(Matrix).join(ExtractionSchema).filter(
+        Matrix.id == matrix_id,
+        ExtractionSchema.user_id == current_user.id
+    ).first()
     if not matrix:
         raise HTTPException(status_code=404, detail="Matrix not found")
 

@@ -54,12 +54,12 @@ def get_collections(db: Session, user_id: str) -> list[dict]:
 
 def sync_papers(
     db: Session,
+    user_id: str,
     collection_key: Optional[str] = None,
 ) -> dict:
     """
     Sync papers from Zotero into the database.
     """
-    user_id = "00000000-0000-0000-0000-000000000001"  # Default user
     from app.models.user import User
     user = db.query(User).filter(User.id == user_id).first()
     if not user or not user.zotero_api_key or not user.zotero_library_id:

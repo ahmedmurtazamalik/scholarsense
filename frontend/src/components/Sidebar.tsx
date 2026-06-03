@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "./AuthContext";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "📊" },
@@ -16,6 +17,7 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
 
   return (
     <aside
@@ -80,9 +82,39 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer */}
-      <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border-color)" }}>
-        <p style={{ fontSize: 11, color: "var(--text-muted)" }}>v2.0.0 • AI-Powered</p>
+      {/* Footer with user info & logout */}
+      <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border-color)", display: "flex", flexDirection: "column", gap: 12 }}>
+        {user && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              👤 {user.name}
+            </p>
+            <p style={{ fontSize: 11, color: "var(--text-muted)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {user.email}
+            </p>
+          </div>
+        )}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <p style={{ fontSize: 10, color: "var(--text-muted)", margin: 0 }}>v2.0.0 • AI</p>
+          <button
+            onClick={logout}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "var(--accent-rose)",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              padding: "4px 8px",
+              borderRadius: 4,
+              transition: "background 0.2s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(244, 114, 182, 0.08)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            Logout ➔
+          </button>
+        </div>
       </div>
     </aside>
   );

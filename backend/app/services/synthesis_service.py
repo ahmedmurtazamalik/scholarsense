@@ -19,18 +19,29 @@ from app.models.chunk import Chunk
 from app.services.llm_client import call_llm_sync, extract_json_from_response
 
 
-def get_overview_stats(db: Session) -> dict:
-    """Dashboard statistics including pipeline phase counts."""
+def get_overview_stats(db: Session, user_id: str | None = None) -> dict:
+    """Dashboard statistics including pipeline phase counts, scoped by user_id."""
     from app.models.screening import ScreeningResult
 
-    total_papers = db.query(Paper).count()
-    processed = db.query(Paper).filter(Paper.status == "processed").count()
-    included = db.query(Paper).filter(Paper.status == "included").count()
-    excluded = db.query(Paper).filter(Paper.status == "excluded").count()
-    pending = db.query(Paper).filter(Paper.status == "pending").count()
-    total_evaluations = db.query(EvaluationResult).count()
-    total_screenings = db.query(ScreeningResult).count()
-    total_rqs = db.query(ResearchQuestion).count()
+    paper_query = db.query(Paper)
+    eval_query = db.query(EvaluationResult).join(Paper)
+    screening_query = db.query(ScreeningResult).join(Paper)
+    rq_query = db.query(ResearchQuestion)
+
+    if user_id:
+        paper_query = paper_query.filter(Paper.user_id == user_id)
+        eval_query = eval_query.filter(Paper.user_id == user_id)
+        screening_query = screening_query.filter(Paper.user_id == user_id)
+        rq_query = rq_query.filter(ResearchQuestion.user_id == user_id)
+
+    total_papers = paper_query.count()
+    processed = paper_query.filter(Paper.status == "processed").count()
+    included = paper_query.filter(Paper.status == "included").count()
+    excluded = paper_query.filter(Paper.status == "excluded").count()
+    pending = paper_query.filter(Paper.status == "pending").count()
+    total_evaluations = eval_query.count()
+    total_screenings = screening_query.count()
+    total_rqs = rq_query.count()
 
     return {
         "total_papers": total_papers,
@@ -44,23 +55,30 @@ def get_overview_stats(db: Session) -> dict:
     }
 
 
-def get_methodology_distribution(db: Session, paper_ids: list[str] | None = None) -> list[dict]:
+def get_methodology_distribution(
+    db: Session,
+    paper_ids: list[str] | None = None,
+    user_id: str | None = None,
+) -> list[dict]:
     """
     Extract methodology distribution across papers using evaluation results.
-
-    Strategy:
-    1. Prefer RQs whose text mentions "method" or "technique" or "approach".
-    2. If none found, fall back to ALL evaluation results (so the chart is
-       always populated once any evaluation has been run).
-    3. Last resort: legacy ExtractionResult table with field_name="methodology".
     """
+    # Scope papers by user
+    if user_id:
+        user_paper_ids = [p.id for p in db.query(Paper).filter(Paper.user_id == user_id).all()]
+        if paper_ids:
+            paper_ids = list(set(paper_ids) & set(user_paper_ids))
+        else:
+            paper_ids = user_paper_ids
+
     # 1. Look for methodology-related RQs (broad keyword set)
     method_keywords = ["%method%", "%technique%", "%approach%", "%design%"]
     rqs = []
     for kw in method_keywords:
-        rqs = db.query(ResearchQuestion).filter(
-            ResearchQuestion.question_text.ilike(kw)
-        ).all()
+        rq_query = db.query(ResearchQuestion).filter(ResearchQuestion.question_text.ilike(kw))
+        if user_id:
+            rq_query = rq_query.filter(ResearchQuestion.user_id == user_id)
+        rqs = rq_query.all()
         if rqs:
             break
 
@@ -69,7 +87,7 @@ def get_methodology_distribution(db: Session, paper_ids: list[str] | None = None
             EvaluationResult.question_id.in_([rq.id for rq in rqs]),
             EvaluationResult.answer.isnot(None),
         )
-        if paper_ids:
+        if paper_ids is not None:
             query = query.filter(EvaluationResult.paper_id.in_(paper_ids))
         results = query.all()
         if results:
@@ -77,12 +95,17 @@ def get_methodology_distribution(db: Session, paper_ids: list[str] | None = None
             return _categorize_values(answers, "methodology")
 
     # 2. Fallback: use ALL evaluation answers across every RQ
-    all_rqs = db.query(ResearchQuestion).all()
+    rq_query = db.query(ResearchQuestion)
+    if user_id:
+        rq_query = rq_query.filter(ResearchQuestion.user_id == user_id)
+    all_rqs = rq_query.all()
+    
     if all_rqs:
         query = db.query(EvaluationResult).filter(
+            EvaluationResult.question_id.in_([rq.id for rq in all_rqs]),
             EvaluationResult.answer.isnot(None),
         )
-        if paper_ids:
+        if paper_ids is not None:
             query = query.filter(EvaluationResult.paper_id.in_(paper_ids))
         results = query.all()
         if results:
@@ -95,7 +118,7 @@ def get_methodology_distribution(db: Session, paper_ids: list[str] | None = None
         .filter(ExtractionResult.field_name == "methodology")
         .filter(ExtractionResult.value.isnot(None))
     )
-    if paper_ids:
+    if paper_ids is not None:
         query = query.filter(ExtractionResult.paper_id.in_(paper_ids))
 
     results = query.group_by(ExtractionResult.value).order_by(
@@ -105,11 +128,28 @@ def get_methodology_distribution(db: Session, paper_ids: list[str] | None = None
     return [{"label": r[0], "count": r[1]} for r in results]
 
 
-def get_year_trends(db: Session, paper_ids: list[str] | None = None) -> list[dict]:
-    """Paper count by publication year."""
+def get_year_trends(
+    db: Session,
+    paper_ids: list[str] | None = None,
+    user_id: str | None = None,
+) -> list[dict]:
+    """Paper count by publication year, filtered by user."""
+    # Scope papers by user
+    if user_id:
+        user_paper_ids = [p.id for p in db.query(Paper).filter(Paper.user_id == user_id).all()]
+        if paper_ids:
+            paper_ids = list(set(paper_ids) & set(user_paper_ids))
+        else:
+            paper_ids = user_paper_ids
+
     query = db.query(Paper.year, func.count(Paper.id)).filter(Paper.year.isnot(None))
-    if paper_ids:
+    if paper_ids is not None:
         query = query.filter(Paper.id.in_(paper_ids))
+    else:
+        # If user_id is provided but no paper_ids, we must at least filter papers by user
+        if user_id:
+            query = query.filter(Paper.user_id == user_id)
+            
     results = query.group_by(Paper.year).order_by(Paper.year).all()
     return [{"year": r[0], "count": r[1]} for r in results]
 
@@ -117,14 +157,26 @@ def get_year_trends(db: Session, paper_ids: list[str] | None = None) -> list[dic
 def get_limitations_summary(
     db: Session,
     paper_ids: list[str] | None = None,
+    user_id: str | None = None,
 ) -> list[dict]:
     """
     Extract common limitations across papers using evaluation results or LLM.
     """
+    # Scope papers by user
+    if user_id:
+        user_paper_ids = [p.id for p in db.query(Paper).filter(Paper.user_id == user_id).all()]
+        if paper_ids:
+            paper_ids = list(set(paper_ids) & set(user_paper_ids))
+        else:
+            paper_ids = user_paper_ids
+
     # Look for limitation-related RQs
-    rqs = db.query(ResearchQuestion).filter(
+    rq_query = db.query(ResearchQuestion).filter(
         ResearchQuestion.question_text.ilike("%limitation%")
-    ).all()
+    )
+    if user_id:
+        rq_query = rq_query.filter(ResearchQuestion.user_id == user_id)
+    rqs = rq_query.all()
 
     limitations = []
 
@@ -133,7 +185,7 @@ def get_limitations_summary(
             EvaluationResult.question_id.in_([rq.id for rq in rqs]),
             EvaluationResult.answer.isnot(None),
         )
-        if paper_ids:
+        if paper_ids is not None:
             query = query.filter(EvaluationResult.paper_id.in_(paper_ids))
 
         results = query.all()
@@ -153,20 +205,33 @@ def get_limitations_summary(
 def get_aggregation_table(
     db: Session,
     paper_ids: list[str] | None = None,
+    user_id: str | None = None,
 ) -> dict:
     """
     Build a comprehensive aggregation table across papers.
     Uses evaluation results and paper metadata.
     """
-    if paper_ids:
+    # Scope papers by user
+    if user_id:
+        user_paper_ids = [p.id for p in db.query(Paper).filter(Paper.user_id == user_id).all()]
+        if paper_ids:
+            paper_ids = list(set(paper_ids) & set(user_paper_ids))
+        else:
+            paper_ids = user_paper_ids
+
+    if paper_ids is not None:
         papers = db.query(Paper).filter(Paper.id.in_(paper_ids)).all()
     else:
-        papers = db.query(Paper).filter(
-            Paper.status == PaperStatus.INCLUDED.value
-        ).all()
+        paper_query = db.query(Paper).filter(Paper.status == PaperStatus.INCLUDED.value)
+        if user_id:
+            paper_query = paper_query.filter(Paper.user_id == user_id)
+        papers = paper_query.all()
 
     rows = []
-    rqs = db.query(ResearchQuestion).all()
+    rq_query = db.query(ResearchQuestion)
+    if user_id:
+        rq_query = rq_query.filter(ResearchQuestion.user_id == user_id)
+    rqs = rq_query.all()
     field_names = [rq.question_text[:40] for rq in rqs]
 
     for paper in papers:
@@ -206,6 +271,7 @@ def cluster_papers_by_field(
     db: Session,
     num_clusters: int = 5,
     paper_ids: list[str] | None = None,
+    user_id: str | None = None,
 ) -> list[dict]:
     """
     Cluster papers using embedding similarity.
@@ -214,12 +280,23 @@ def cluster_papers_by_field(
     import numpy as np
     from app.services.vector_store import generate_embeddings
 
-    if paper_ids:
+    # Scope papers by user
+    if user_id:
+        user_paper_ids = [p.id for p in db.query(Paper).filter(Paper.user_id == user_id).all()]
+        if paper_ids:
+            paper_ids = list(set(paper_ids) & set(user_paper_ids))
+        else:
+            paper_ids = user_paper_ids
+
+    if paper_ids is not None:
         papers = db.query(Paper).filter(Paper.id.in_(paper_ids)).all()
     else:
-        papers = db.query(Paper).filter(
+        paper_query = db.query(Paper).filter(
             Paper.status.in_([PaperStatus.INCLUDED.value, PaperStatus.PROCESSED.value])
-        ).all()
+        )
+        if user_id:
+            paper_query = paper_query.filter(Paper.user_id == user_id)
+        papers = paper_query.all()
 
     if len(papers) < 2:
         return [{
@@ -284,7 +361,6 @@ def _categorize_values(answers: list[str], field_name: str) -> list[dict]:
     """Deduplicate and count methodology answers."""
     counts: dict[str, int] = {}
     for answer in answers:
-        # Simple normalization
         key = answer.strip()[:100].lower()
         counts[key] = counts.get(key, 0) + 1
 

@@ -30,3 +30,7 @@ pydantic-settings>=2.5.2
 httpx>=0.28.1
 aiofiles>=23.2.1
 uuid6==2024.1.12
+
+# Security
+bcrypt>=4.0.0
+pyjwt>=2.8.0

@@ -6,18 +6,18 @@ from sqlalchemy.orm import Session
 from app.models.chunk import Chunk
 from app.models.paper import Paper
 
-# Cache for latest clustering results
-_cached_clusters = None
+# Cache for latest clustering results (keyed by user_id)
+_cached_clusters: dict[str, list] = {}
 
 
-def cluster_papers(db: Session, num_clusters: int = 5) -> list[dict]:
+def cluster_papers(db: Session, user_id: str, num_clusters: int = 5) -> list[dict]:
     """
     Cluster papers based on their chunk embeddings.
     Uses FAISS for k-means clustering.
     """
     global _cached_clusters
 
-    papers = db.query(Paper).all()
+    papers = db.query(Paper).filter(Paper.user_id == user_id).all()
     if len(papers) < num_clusters:
         num_clusters = max(1, len(papers))
 
@@ -39,13 +39,13 @@ def cluster_papers(db: Session, num_clusters: int = 5) -> list[dict]:
 
     if len(paper_embeddings) < 2:
         # Not enough papers with embeddings — use simple single cluster
-        _cached_clusters = [{
+        _cached_clusters[user_id] = [{
             "cluster_id": 0,
             "label": "All Papers",
             "paper_ids": [p.id for p in papers],
             "size": len(papers),
         }]
-        return _cached_clusters
+        return _cached_clusters[user_id]
 
     # Build matrix
     paper_ids = list(paper_embeddings.keys())
@@ -99,10 +99,10 @@ def cluster_papers(db: Session, num_clusters: int = 5) -> list[dict]:
                 "size": len(pids),
             })
 
-    _cached_clusters = clusters
+    _cached_clusters[user_id] = clusters
     return clusters
 
 
-def get_cached_clusters():
-    """Return cached clustering results."""
-    return _cached_clusters
+def get_cached_clusters(user_id: str):
+    """Return cached clustering results for the user."""
+    return _cached_clusters.get(user_id)

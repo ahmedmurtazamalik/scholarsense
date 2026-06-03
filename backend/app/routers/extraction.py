@@ -5,15 +5,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.extraction import ExtractionSchema, ExtractionResult
+from app.models.paper import Paper
+from app.models.user import User
 from app.schemas.extraction import (
     ExtractionSchemaCreate, ExtractionSchemaResponse,
     ExtractionRunRequest, ExtractionResultResponse,
     ExtractionCorrectionRequest, ExtractionRunResponse,
 )
+from app.utils.auth import get_current_user
 
 router = APIRouter(prefix="/extraction", tags=["Extraction"])
-
-DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001"
 
 # ── Built-in templates ──────────────────────────────────────────
 
@@ -60,14 +61,18 @@ def get_templates():
 
 
 @router.post("/schemas", response_model=ExtractionSchemaResponse)
-def create_schema(req: ExtractionSchemaCreate, db: Session = Depends(get_db)):
+def create_schema(
+    req: ExtractionSchemaCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Create a new extraction schema."""
     schema = ExtractionSchema(
         name=req.name,
         description=req.description,
         fields_definition=[f.model_dump() for f in req.fields_definition],
         template_type=req.template_type,
-        user_id=DEFAULT_USER_ID,
+        user_id=current_user.id,
     )
     db.add(schema)
     db.commit()
@@ -76,22 +81,37 @@ def create_schema(req: ExtractionSchemaCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/schemas", response_model=list[ExtractionSchemaResponse])
-def list_schemas(db: Session = Depends(get_db)):
-    """List all extraction schemas."""
-    return db.query(ExtractionSchema).all()
+def list_schemas(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List all extraction schemas for the user."""
+    return db.query(ExtractionSchema).filter(ExtractionSchema.user_id == current_user.id).all()
 
 
 @router.post("/run", response_model=list[ExtractionRunResponse])
-def run_extraction(req: ExtractionRunRequest, db: Session = Depends(get_db)):
+def run_extraction(
+    req: ExtractionRunRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Run multi-pass extraction on specified papers using the given schema."""
     from app.services.extraction_engine import run_extraction_pipeline
 
-    schema = db.query(ExtractionSchema).filter(ExtractionSchema.id == req.schema_id).first()
+    schema = db.query(ExtractionSchema).filter(
+        ExtractionSchema.id == req.schema_id,
+        ExtractionSchema.user_id == current_user.id
+    ).first()
     if not schema:
         raise HTTPException(status_code=404, detail="Schema not found")
 
     results = []
     for paper_id in req.paper_ids:
+        # Verify paper belongs to user
+        paper = db.query(Paper).filter(Paper.id == paper_id, Paper.user_id == current_user.id).first()
+        if not paper:
+            continue
+
         paper_results = run_extraction_pipeline(db, paper_id, schema)
         results.append(ExtractionRunResponse(
             message="Extraction complete",
@@ -102,8 +122,18 @@ def run_extraction(req: ExtractionRunRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/results/{paper_id}", response_model=list[ExtractionResultResponse])
-def get_results(paper_id: str, schema_id: str = None, db: Session = Depends(get_db)):
+def get_results(
+    paper_id: str,
+    schema_id: str = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Get extraction results for a paper, optionally filtered by schema."""
+    # Verify paper belongs to user
+    paper = db.query(Paper).filter(Paper.id == paper_id, Paper.user_id == current_user.id).first()
+    if not paper:
+        raise HTTPException(status_code=404, detail="Paper not found")
+
     query = db.query(ExtractionResult).filter(ExtractionResult.paper_id == paper_id)
     if schema_id:
         query = query.filter(ExtractionResult.schema_id == schema_id)
@@ -111,9 +141,17 @@ def get_results(paper_id: str, schema_id: str = None, db: Session = Depends(get_
 
 
 @router.patch("/results/{result_id}", response_model=ExtractionResultResponse)
-def correct_result(result_id: str, req: ExtractionCorrectionRequest, db: Session = Depends(get_db)):
+def correct_result(
+    result_id: str,
+    req: ExtractionCorrectionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """User correction of an extraction result."""
-    result = db.query(ExtractionResult).filter(ExtractionResult.id == result_id).first()
+    result = db.query(ExtractionResult).join(ExtractionSchema).filter(
+        ExtractionResult.id == result_id,
+        ExtractionSchema.user_id == current_user.id
+    ).first()
     if not result:
         raise HTTPException(status_code=404, detail="Result not found")
 

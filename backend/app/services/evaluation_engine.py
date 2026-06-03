@@ -30,6 +30,7 @@ def run_evaluation(
     db: Session,
     paper_id: str,
     question_ids: list[str] | None = None,
+    user_id: str | None = None,
 ) -> dict:
     """
     Run RAG-based evaluation for a paper against research questions.
@@ -42,17 +43,24 @@ def run_evaluation(
             "results": [...]
         }
     """
-    paper = db.query(Paper).filter(Paper.id == paper_id).first()
+    paper_query = db.query(Paper).filter(Paper.id == paper_id)
+    if user_id:
+        paper_query = paper_query.filter(Paper.user_id == user_id)
+    paper = paper_query.first()
     if not paper:
         raise ValueError(f"Paper {paper_id} not found")
 
     # Get research questions
+    rq_query = db.query(ResearchQuestion)
+    if user_id:
+        rq_query = rq_query.filter(ResearchQuestion.user_id == user_id)
+
     if question_ids:
-        questions = db.query(ResearchQuestion).filter(
+        questions = rq_query.filter(
             ResearchQuestion.id.in_(question_ids)
         ).all()
     else:
-        questions = db.query(ResearchQuestion).all()
+        questions = rq_query.all()
 
     if not questions:
         raise ValueError("No research questions defined. Create research questions first.")
@@ -175,7 +183,7 @@ Respond in JSON format:
             prompt_text=prompt[:2000],
             model_used=settings.LLM_MODEL,
             response_text=json.dumps(extracted)[:2000],
-            user_id=DEFAULT_USER_ID,
+            user_id=user_id or DEFAULT_USER_ID,
         )
         db.add(audit)
 
@@ -209,6 +217,7 @@ def run_evaluation_batch(
     paper_ids: list[str],
     question_ids: list[str] | None = None,
     apply_threshold: bool = True,
+    user_id: str | None = None,
 ) -> list[dict]:
     """
     Run evaluation on multiple papers and optionally apply threshold filtering.
@@ -217,11 +226,14 @@ def run_evaluation_batch(
 
     for paper_id in paper_ids:
         try:
-            result = run_evaluation(db, paper_id, question_ids)
+            result = run_evaluation(db, paper_id, question_ids, user_id=user_id)
 
             # Apply threshold filtering
             if apply_threshold:
-                paper = db.query(Paper).filter(Paper.id == paper_id).first()
+                paper_query = db.query(Paper).filter(Paper.id == paper_id)
+                if user_id:
+                    paper_query = paper_query.filter(Paper.user_id == user_id)
+                paper = paper_query.first()
                 if paper:
                     if result["final_score"] >= settings.EVALUATION_THRESHOLD:
                         paper.status = PaperStatus.INCLUDED.value
@@ -246,9 +258,12 @@ def run_evaluation_batch(
     return all_results
 
 
-def get_paper_evaluation_summary(db: Session, paper_id: str) -> dict:
+def get_paper_evaluation_summary(db: Session, paper_id: str, user_id: str | None = None) -> dict:
     """Get evaluation summary for a specific paper with all provenance data."""
-    paper = db.query(Paper).filter(Paper.id == paper_id).first()
+    paper_query = db.query(Paper).filter(Paper.id == paper_id)
+    if user_id:
+        paper_query = paper_query.filter(Paper.user_id == user_id)
+    paper = paper_query.first()
     if not paper:
         raise ValueError(f"Paper {paper_id} not found")
 
@@ -258,9 +273,12 @@ def get_paper_evaluation_summary(db: Session, paper_id: str) -> dict:
 
     rq_results = []
     for er in eval_results:
-        rq = db.query(ResearchQuestion).filter(
+        rq_query = db.query(ResearchQuestion).filter(
             ResearchQuestion.id == er.question_id
-        ).first()
+        )
+        if user_id:
+            rq_query = rq_query.filter(ResearchQuestion.user_id == user_id)
+        rq = rq_query.first()
 
         rq_results.append({
             "question": rq.question_text if rq else "Unknown",

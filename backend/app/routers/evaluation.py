@@ -5,28 +5,33 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.evaluation import ResearchQuestion, EvaluationResult
+from app.models.user import User
+from app.models.paper import Paper
 from app.schemas.evaluation import (
     ResearchQuestionCreate, ResearchQuestionResponse,
     EvaluationRunRequest, EvaluationRunResponse,
     PaperEvaluationResponse, EvaluationResultDetail,
     EvaluationSummaryItem,
 )
+from app.utils.auth import get_current_user
 
 router = APIRouter(prefix="/evaluation", tags=["Evaluation"])
-
-DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001"
 
 
 # ── Research Questions ────────────────────────────────────────────
 
 @router.post("/questions", response_model=ResearchQuestionResponse)
-def create_question(req: ResearchQuestionCreate, db: Session = Depends(get_db)):
+def create_question(
+    req: ResearchQuestionCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Create a research question for paper evaluation."""
     rq = ResearchQuestion(
         question_text=req.question_text,
         description=req.description,
         weight=req.weight,
-        user_id=DEFAULT_USER_ID,
+        user_id=current_user.id,
     )
     db.add(rq)
     db.commit()
@@ -35,15 +40,25 @@ def create_question(req: ResearchQuestionCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/questions", response_model=list[ResearchQuestionResponse])
-def list_questions(db: Session = Depends(get_db)):
-    """List all research questions."""
-    return db.query(ResearchQuestion).all()
+def list_questions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List all research questions for the user."""
+    return db.query(ResearchQuestion).filter(ResearchQuestion.user_id == current_user.id).all()
 
 
 @router.delete("/questions/{question_id}")
-def delete_question(question_id: str, db: Session = Depends(get_db)):
+def delete_question(
+    question_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Delete a research question and its evaluation results."""
-    rq = db.query(ResearchQuestion).filter(ResearchQuestion.id == question_id).first()
+    rq = db.query(ResearchQuestion).filter(
+        ResearchQuestion.id == question_id,
+        ResearchQuestion.user_id == current_user.id
+    ).first()
     if not rq:
         raise HTTPException(status_code=404, detail="Research question not found")
     db.delete(rq)
@@ -54,12 +69,16 @@ def delete_question(question_id: str, db: Session = Depends(get_db)):
 # ── Evaluation Run ────────────────────────────────────────────────
 
 @router.post("/run", response_model=EvaluationRunResponse)
-def run_evaluation(req: EvaluationRunRequest, db: Session = Depends(get_db)):
+def run_evaluation(
+    req: EvaluationRunRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Run RAG-based evaluation on papers against research questions."""
     from app.services.evaluation_engine import run_evaluation_batch, get_paper_evaluation_summary
 
     batch_results = run_evaluation_batch(
-        db, req.paper_ids, req.question_ids, req.apply_threshold
+        db, req.paper_ids, req.question_ids, req.apply_threshold, user_id=current_user.id
     )
 
     paper_responses = []
@@ -75,7 +94,7 @@ def run_evaluation(req: EvaluationRunRequest, db: Session = Depends(get_db)):
             continue
 
         # Get full summary with provenance
-        summary = get_paper_evaluation_summary(db, br["paper_id"])
+        summary = get_paper_evaluation_summary(db, br["paper_id"], user_id=current_user.id)
         paper_responses.append(PaperEvaluationResponse(
             paper_id=summary["paper_id"],
             title=summary["title"],
@@ -100,12 +119,16 @@ def run_evaluation(req: EvaluationRunRequest, db: Session = Depends(get_db)):
 # ── Results ───────────────────────────────────────────────────────
 
 @router.get("/results/{paper_id}", response_model=PaperEvaluationResponse)
-def get_paper_results(paper_id: str, db: Session = Depends(get_db)):
+def get_paper_results(
+    paper_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Get evaluation results for a specific paper with full provenance."""
     from app.services.evaluation_engine import get_paper_evaluation_summary
 
     try:
-        summary = get_paper_evaluation_summary(db, paper_id)
+        summary = get_paper_evaluation_summary(db, paper_id, user_id=current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -121,9 +144,11 @@ def get_paper_results(paper_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/summary", response_model=list[EvaluationSummaryItem])
-def get_evaluation_summary(db: Session = Depends(get_db)):
+def get_evaluation_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Get ranked summary of all evaluated papers."""
-    from app.models.paper import Paper
     from sqlalchemy import func
 
     # Get papers with evaluation results
@@ -133,6 +158,8 @@ def get_evaluation_summary(db: Session = Depends(get_db)):
             func.avg(EvaluationResult.score).label("avg_score"),
             func.count(EvaluationResult.id).label("rq_count"),
         )
+        .join(Paper, EvaluationResult.paper_id == Paper.id)
+        .filter(Paper.user_id == current_user.id)
         .group_by(EvaluationResult.paper_id)
         .order_by(func.avg(EvaluationResult.score).desc())
         .all()
@@ -141,7 +168,7 @@ def get_evaluation_summary(db: Session = Depends(get_db)):
     results = []
     threshold = getattr(settings, "EVALUATION_THRESHOLD", 0.7)
     for ps in paper_scores:
-        paper = db.query(Paper).filter(Paper.id == ps.paper_id).first()
+        paper = db.query(Paper).filter(Paper.id == ps.paper_id, Paper.user_id == current_user.id).first()
         if paper:
             avg_score = float(ps.avg_score) if ps.avg_score else 0.0
             results.append(EvaluationSummaryItem(

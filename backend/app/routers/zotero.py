@@ -5,7 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import Optional
+
 from app.database import get_db
+from app.models.user import User
+from app.utils.auth import get_current_user
 
 router = APIRouter(prefix="/zotero", tags=["Zotero"])
 
@@ -21,20 +24,20 @@ class ZoteroSyncRequest(BaseModel):
 
 
 @router.post("/connect")
-def connect_zotero(req: ZoteroConnectRequest, db: Session = Depends(get_db)):
-    """Validate and store Zotero API credentials in the db."""
+def connect_zotero(
+    req: ZoteroConnectRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Validate and store Zotero API credentials in the db for the current user."""
     from app.services.zotero_service import validate_connection
-    from app.models.user import User
     try:
         result = validate_connection(req.api_key, req.library_id, req.library_type)
         
-        user_id = "00000000-0000-0000-0000-000000000001"
-        user = db.query(User).filter(User.id == user_id).first()
-        if user:
-            user.zotero_api_key = req.api_key
-            user.zotero_library_id = req.library_id
-            user.zotero_library_type = req.library_type
-            db.commit()
+        current_user.zotero_api_key = req.api_key
+        current_user.zotero_library_id = req.library_id
+        current_user.zotero_library_type = req.library_type
+        db.commit()
 
         return {"message": "Connected successfully", "username": result.get("username", "Unknown")}
     except Exception as e:
@@ -43,23 +46,29 @@ def connect_zotero(req: ZoteroConnectRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/collections")
-def list_collections(db: Session = Depends(get_db)):
-    """List Zotero collections."""
+def list_collections(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List Zotero collections for the authenticated user."""
     from app.services.zotero_service import get_collections
-    user_id = "00000000-0000-0000-0000-000000000001"
     try:
-        collections = get_collections(db, user_id)
+        collections = get_collections(db, current_user.id)
         return {"collections": collections}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/sync")
-def sync_from_zotero(req: ZoteroSyncRequest, db: Session = Depends(get_db)):
-    """Sync papers from Zotero library/collection into the system."""
+def sync_from_zotero(
+    req: ZoteroSyncRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Sync papers from Zotero library/collection into the user's account."""
     from app.services.zotero_service import sync_papers
     try:
-        result = sync_papers(db, collection_key=req.collection_key)
+        result = sync_papers(db, user_id=current_user.id, collection_key=req.collection_key)
         return {
             "message": "Sync complete",
             "new_papers": result["new"],

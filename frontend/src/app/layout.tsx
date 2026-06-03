@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
+import AppWrapper from "@/components/AppWrapper";
 
 export const metadata: Metadata = {
   title: "Scolar Sense — AI-Powered Systematic Literature Review",
@@ -16,11 +16,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body style={{ display: "flex", minHeight: "100vh" }}>
-        <Sidebar />
-        <main style={{ flex: 1, padding: "32px", overflowY: "auto", marginLeft: "260px" }}>
-          <div className="page-enter">{children}</div>
-        </main>
+      <body style={{ margin: 0, minHeight: "100vh" }}>
+        <AppWrapper>{children}</AppWrapper>
       </body>
     </html>
   );
