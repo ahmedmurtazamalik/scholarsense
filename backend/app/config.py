@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     # App
     APP_NAME: str = "SLR Platform"
     DEBUG: bool = False
-    CORS_ORIGINS: str = "http://localhost:3000"
+    CORS_ORIGINS: str = "http://localhost:3000,https://scholarsenseslr.vercel.app"
 
     class Config:
         env_file = ".env"

@@ -26,6 +26,7 @@ pyzotero>=1.5.18
 
 # Utilities
 pydantic>=2.11.0
+email-validator>=2.0.0
 pydantic-settings>=2.5.2
 httpx>=0.28.1
 aiofiles>=23.2.1
