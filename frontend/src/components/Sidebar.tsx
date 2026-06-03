@@ -3,16 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "./AuthContext";
+import * as Icons from "./Icons";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Dashboard", icon: "📊" },
-  { href: "/papers", label: "Papers", icon: "📄" },
-  { href: "/screening", label: "Screening", icon: "🔍" },
-  { href: "/evaluation", label: "Evaluation", icon: "🧪" },
-  { href: "/synthesis", label: "Synthesis", icon: "📈" },
-  { href: "/extraction", label: "Extraction", icon: "⚙️" },
-  { href: "/matrix", label: "Matrix", icon: "📋" },
-  { href: "/zotero", label: "Zotero", icon: "📚" },
+  { href: "/", label: "Dashboard", Icon: Icons.Dashboard },
+  { href: "/papers", label: "Papers", Icon: Icons.FileText },
+  { href: "/screening", label: "Screening", Icon: Icons.Search },
+  { href: "/evaluation", label: "Evaluation", Icon: Icons.Flask },
+  { href: "/synthesis", label: "Synthesis", Icon: Icons.TrendingUp },
+  { href: "/extraction", label: "Extraction", Icon: Icons.Settings },
+  { href: "/matrix", label: "Matrix", Icon: Icons.Table },
+  { href: "/zotero", label: "Zotero", Icon: Icons.BookOpen },
 ];
 
 export default function Sidebar() {
@@ -57,6 +58,7 @@ export default function Sidebar() {
       <nav style={{ flex: 1 }}>
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+          const Icon = item.Icon;
           return (
             <Link
               key={item.href}
@@ -75,7 +77,7 @@ export default function Sidebar() {
                 transition: "all 0.2s",
               }}
             >
-              <span style={{ fontSize: 18 }}>{item.icon}</span>
+              <Icon size={18} color={isActive ? "var(--accent-blue)" : "var(--text-secondary)"} />
               {item.label}
             </Link>
           );
@@ -86,10 +88,22 @@ export default function Sidebar() {
       <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border-color)", display: "flex", flexDirection: "column", gap: 12 }}>
         {user && (
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              👤 {user.name}
+            <p style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: "var(--text-primary)",
+              margin: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              display: "flex",
+              alignItems: "center",
+              gap: 6
+            }}>
+              <Icons.User size={14} color="var(--text-secondary)" />
+              {user.name}
             </p>
-            <p style={{ fontSize: 11, color: "var(--text-muted)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <p style={{ fontSize: 11, color: "var(--text-muted)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingLeft: 20 }}>
               {user.email}
             </p>
           </div>
@@ -108,11 +122,15 @@ export default function Sidebar() {
               padding: "4px 8px",
               borderRadius: 4,
               transition: "background 0.2s",
+              display: "flex",
+              alignItems: "center",
+              gap: 4
             }}
             onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(244, 114, 182, 0.08)")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
-            Logout ➔
+            Logout
+            <Icons.LogOut size={12} color="var(--accent-rose)" />
           </button>
         </div>
       </div>

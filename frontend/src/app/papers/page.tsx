@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { papersApi, Paper } from "@/lib/api";
+import * as Icons from "@/components/Icons";
 
 export default function PapersPage() {
   const [papers, setPapers] = useState<Paper[]>([]);
@@ -82,16 +83,22 @@ export default function PapersPage() {
           <h1 style={{ fontSize: 28, fontWeight: 800 }}><span className="gradient-text">Papers</span></h1>
           <p style={{ color: "var(--text-muted)", fontSize: 14 }}>{total} papers in library</p>
         </div>
-        <div style={{ display: "flex", gap: 12 }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <input type="file" ref={fileRef} accept=".pdf" multiple onChange={handleUpload} style={{ display: "none" }} />
-          <button className="btn-primary" onClick={() => fileRef.current?.click()} disabled={uploading}>
-            {uploading ? "Uploading..." : "📥 Upload PDFs"}
+          
+          <button className="btn-primary" onClick={() => fileRef.current?.click()} disabled={uploading} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Icons.Upload size={14} />
+            {uploading ? "Uploading..." : "Upload PDFs"}
           </button>
-          <button className="btn-secondary" onClick={handleProcessAll}>
-            ⚙️ Process All Pending
+          
+          <button className="btn-secondary" onClick={handleProcessAll} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Icons.Settings size={14} />
+            Process All Pending
           </button>
-          <button className="btn-secondary" style={{ color: "var(--accent-rose)" }} onClick={handleDeleteAll}>
-            🗑️ Delete All
+          
+          <button className="btn-secondary" style={{ color: "var(--accent-rose)", display: "inline-flex", alignItems: "center", gap: 6 }} onClick={handleDeleteAll}>
+            <Icons.Trash2 size={14} color="var(--accent-rose)" />
+            Delete All
           </button>
         </div>
       </div>
@@ -141,12 +148,13 @@ export default function PapersPage() {
                   <td>
                     <div style={{ display: "flex", gap: 8 }}>
                       {p.status === "pending" && (
-                        <button className="btn-secondary" style={{ padding: "6px 12px", fontSize: 12 }} onClick={() => handleProcess(p.id)}>
-                          ⚙️ Process
+                        <button className="btn-secondary" style={{ padding: "6px 12px", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 4 }} onClick={() => handleProcess(p.id)}>
+                          <Icons.Settings size={12} />
+                          Process
                         </button>
                       )}
-                      <button className="btn-secondary" style={{ padding: "6px 12px", fontSize: 12, color: "var(--accent-rose)" }} onClick={() => handleDelete(p.id)}>
-                        🗑️
+                      <button className="btn-secondary" style={{ padding: "6px 12px", fontSize: 12, display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={() => handleDelete(p.id)}>
+                        <Icons.Trash2 size={12} color="var(--accent-rose)" />
                       </button>
                     </div>
                   </td>

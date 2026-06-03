@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { analyticsApi } from "@/lib/api";
+import * as Icons from "@/components/Icons";
 
 export default function AnalyticsPage() {
   const [methodsData, setMethodsData] = useState<{ label: string; count: number }[]>([]);
@@ -31,7 +32,9 @@ export default function AnalyticsPage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
           {/* Methods frequency */}
           <div className="glass-card" style={{ padding: 24 }}>
-            <h3 style={{ fontWeight: 700, marginBottom: 20 }}>📊 Methods Frequency</h3>
+            <h3 style={{ fontWeight: 700, marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
+              <Icons.Dashboard size={18} color="var(--accent-cyan)" /> Methods Frequency
+            </h3>
             {methodsData.length === 0 ? (
               <p style={{ color: "var(--text-muted)", fontSize: 13 }}>No data yet. Run extraction first.</p>
             ) : (
@@ -59,7 +62,9 @@ export default function AnalyticsPage() {
 
           {/* Year trends */}
           <div className="glass-card" style={{ padding: 24 }}>
-            <h3 style={{ fontWeight: 700, marginBottom: 20 }}>📈 Year Trends</h3>
+            <h3 style={{ fontWeight: 700, marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
+              <Icons.TrendingUp size={18} color="var(--accent-blue)" /> Year Trends
+            </h3>
             {yearData.length === 0 ? (
               <p style={{ color: "var(--text-muted)", fontSize: 13 }}>No year data available.</p>
             ) : (

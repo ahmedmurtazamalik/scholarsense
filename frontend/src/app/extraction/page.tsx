@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { extractionApi, ExtractionSchema } from "@/lib/api";
+import * as Icons from "@/components/Icons";
 
 const FIELD_TYPES = ["string", "number", "boolean", "list"];
 
@@ -55,16 +56,20 @@ export default function ExtractionPage() {
           <h1 style={{ fontSize: 28, fontWeight: 800 }}><span className="gradient-text">Extraction</span></h1>
           <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Define schemas and extract structured data from papers</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowCreate(!showCreate)}>
-          {showCreate ? "✕ Cancel" : "➕ New Schema"}
+        <button className="btn-primary" onClick={() => setShowCreate(!showCreate)} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          {showCreate ? (
+            <><Icons.X size={14} /> Cancel</>
+          ) : (
+            <><Icons.Plus size={14} /> New Schema</>
+          )}
         </button>
       </div>
 
       {/* Templates */}
       <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
         {Object.keys(templates).map((key) => (
-          <button key={key} className="btn-secondary" onClick={() => loadTemplate(key)} style={{ fontSize: 13 }}>
-            📋 {templates[key].name}
+          <button key={key} className="btn-secondary" onClick={() => loadTemplate(key)} style={{ fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Icons.Table size={14} color="var(--accent-blue)" /> {templates[key].name}
           </button>
         ))}
       </div>
@@ -99,13 +104,17 @@ export default function ExtractionPage() {
               </select>
               <input placeholder="Description" value={f.description} onChange={(e) => updateField(i, "description", e.target.value)}
                 style={{ flex: 2, padding: "8px 12px", borderRadius: 6, border: "1px solid var(--border-color)", background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 13 }} />
-              <button onClick={() => removeField(i)} style={{ color: "var(--accent-rose)", background: "none", border: "none", cursor: "pointer", fontSize: 16 }}>✕</button>
+              <button onClick={() => removeField(i)} style={{ color: "var(--accent-rose)", background: "none", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                <Icons.X size={16} color="var(--accent-rose)" />
+              </button>
             </div>
           ))}
           <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
-            <button className="btn-secondary" onClick={addField} style={{ fontSize: 13 }}>➕ Add Field</button>
-            <button className="btn-primary" onClick={handleCreate} disabled={!newSchema.name || newSchema.fields.every((f) => !f.name)}>
-              💾 Save Schema
+            <button className="btn-secondary" onClick={addField} style={{ fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Icons.Plus size={14} /> Add Field
+            </button>
+            <button className="btn-primary" onClick={handleCreate} disabled={!newSchema.name || newSchema.fields.every((f) => !f.name)} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Icons.Save size={14} /> Save Schema
             </button>
           </div>
         </div>
@@ -133,8 +142,8 @@ export default function ExtractionPage() {
       </div>
 
       {!loading && schemas.length === 0 && !showCreate && (
-        <div className="glass-card" style={{ padding: 32, textAlign: "center" }}>
-          <p style={{ fontSize: 36, marginBottom: 8 }}>🔍</p>
+        <div className="glass-card" style={{ padding: 48, textAlign: "center" }}>
+          <Icons.Search size={48} color="var(--accent-blue)" style={{ marginBottom: 16 }} />
           <p style={{ color: "var(--text-muted)" }}>No schemas yet. Create one or load a template.</p>
         </div>
       )}

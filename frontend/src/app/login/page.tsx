@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useAuth } from "@/components/AuthContext";
+import * as Icons from "@/components/Icons";
 
 export default function LoginPage() {
   const { login, register } = useAuth();
@@ -106,7 +107,7 @@ export default function LoginPage() {
               gap: 8,
             }}
           >
-            ⚠️ {error}
+            <Icons.AlertTriangle size={16} color="var(--accent-rose)" /> {error}
           </div>
         )}
 

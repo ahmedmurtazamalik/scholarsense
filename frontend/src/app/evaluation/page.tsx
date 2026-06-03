@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { evaluationApi, ResearchQuestion, PaperEvaluation, EvaluationSummaryItem, papersApi, Paper } from "@/lib/api";
+import * as Icons from "@/components/Icons";
 
 export default function EvaluationPage() {
   const [questions, setQuestions] = useState<ResearchQuestion[]>([]);
@@ -77,11 +78,11 @@ export default function EvaluationPage() {
           <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Phase 2 — Deep LLM-based paper evaluation with provenance</p>
         </div>
         <div style={{ display: "flex", gap: 12 }}>
-          <button className="btn-secondary" onClick={() => setShowCreate(!showCreate)}>
-            {showCreate ? "✕ Cancel" : "➕ Add Question"}
+          <button className="btn-secondary" onClick={() => setShowCreate(!showCreate)} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            {showCreate ? <><Icons.X size={14} /> Cancel</> : <><Icons.Plus size={14} /> Add Question</>}
           </button>
-          <button className="btn-primary" onClick={handleRunAll} disabled={running || questions.length === 0}>
-            {running ? "Evaluating..." : "🧪 Run Evaluation"}
+          <button className="btn-primary" onClick={handleRunAll} disabled={running || questions.length === 0} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            {running ? "Evaluating..." : <><Icons.Flask size={14} /> Run Evaluation</>}
           </button>
         </div>
       </div>
@@ -96,7 +97,9 @@ export default function EvaluationPage() {
               <input placeholder="Description (optional)" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} style={{ ...inputStyle, flex: 2 }} />
               <input type="number" step={0.1} min={0.1} max={5} value={newWeight} onChange={(e) => setNewWeight(parseFloat(e.target.value))} placeholder="Weight" style={{ ...inputStyle, flex: 0, width: 100 }} />
             </div>
-            <button className="btn-primary" onClick={handleAddQuestion} disabled={!newQ} style={{ alignSelf: "flex-start" }}>💾 Save Question</button>
+            <button className="btn-primary" onClick={handleAddQuestion} disabled={!newQ} style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Icons.Save size={14} /> Save Question
+            </button>
           </div>
         </div>
       )}
@@ -113,7 +116,9 @@ export default function EvaluationPage() {
                   {q.description && <p style={{ fontSize: 12, color: "var(--text-muted)" }}>{q.description}</p>}
                   <span className="badge badge-processed" style={{ fontSize: 10, marginTop: 6 }}>Weight: {q.weight}</span>
                 </div>
-                <button onClick={() => handleDeleteQuestion(q.id)} style={{ color: "var(--accent-rose)", background: "none", border: "none", cursor: "pointer", fontSize: 14, marginLeft: 8 }}>✕</button>
+                <button onClick={() => handleDeleteQuestion(q.id)} style={{ color: "var(--accent-rose)", background: "none", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", marginLeft: 8 }}>
+                  <Icons.Trash2 size={14} color="var(--accent-rose)" />
+                </button>
               </div>
             ))}
           </div>
@@ -123,8 +128,9 @@ export default function EvaluationPage() {
       {/* Evaluation Summary */}
       {summary.length > 0 && (
         <div className="glass-card" style={{ overflow: "hidden", marginBottom: 24 }}>
-          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-color)" }}>
-            <h3 style={{ fontWeight: 700, fontSize: 16 }}>📊 Evaluation Results (ranked by score)</h3>
+          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-color)", display: "flex", alignItems: "center", gap: 8 }}>
+            <Icons.Dashboard size={18} color="var(--accent-blue)" />
+            <h3 style={{ fontWeight: 700, fontSize: 16, margin: 0 }}>Evaluation Results (ranked by score)</h3>
           </div>
           <table>
             <thead>
@@ -152,8 +158,8 @@ export default function EvaluationPage() {
                   </td>
                   <td>{s.rq_count}</td>
                   <td>
-                    <button className="btn-secondary" onClick={() => handleViewDetails(s.paper_id)} style={{ fontSize: 12, padding: "6px 12px" }}>
-                      🔎 Details
+                    <button className="btn-secondary" onClick={() => handleViewDetails(s.paper_id)} style={{ fontSize: 12, padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <Icons.Search size={12} /> Details
                     </button>
                   </td>
                 </tr>
@@ -167,22 +173,26 @@ export default function EvaluationPage() {
       {selectedPaper && (
         <div className="glass-card" style={{ padding: 24, marginBottom: 24, borderLeft: "4px solid var(--accent-blue)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h3 style={{ fontWeight: 700, fontSize: 16 }}>
-              📄 {selectedPaper.title}
+            <h3 style={{ fontWeight: 700, fontSize: 16, display: "flex", alignItems: "center", gap: 8 }}>
+              <Icons.FileText size={18} color="var(--accent-blue)" /> {selectedPaper.title}
               <span style={{ marginLeft: 12, fontWeight: 700, color: scoreColor(selectedPaper.final_score) }}>
                 {(selectedPaper.final_score * 100).toFixed(0)}%
               </span>
             </h3>
-            <button onClick={() => setSelectedPaper(null)} style={{ color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer", fontSize: 18 }}>✕</button>
+            <button onClick={() => setSelectedPaper(null)} style={{ color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+              <Icons.X size={18} />
+            </button>
           </div>
 
           {selectedPaper.evaluations.map((ev, i) => (
             <div key={i} style={{ marginBottom: 20, padding: 16, borderRadius: 8, background: "var(--bg-secondary)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                <p style={{ fontSize: 14, fontWeight: 600, color: "var(--accent-blue)" }}>❓ {ev.question}</p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                <p style={{ fontSize: 14, fontWeight: 600, color: "var(--accent-blue)", display: "flex", alignItems: "center", gap: 6, margin: 0 }}>
+                  <Icons.HelpCircle size={14} color="var(--accent-blue)" /> {ev.question}
+                </p>
                 <span style={{ fontWeight: 700, color: scoreColor(ev.score) }}>{(ev.score * 100).toFixed(0)}%</span>
               </div>
-              <p style={{ fontSize: 13, color: "var(--text-primary)", marginBottom: 8 }}>{ev.answer || "No answer"}</p>
+              <p style={{ fontSize: 13, color: "var(--text-primary)", marginBottom: 8, marginTop: 8 }}>{ev.answer || "No answer"}</p>
 
               {ev.source_quote && (
                 <div style={{ padding: 10, borderRadius: 6, background: "rgba(79, 142, 255, 0.06)", borderLeft: "3px solid var(--accent-blue)", marginBottom: 8 }}>
@@ -204,7 +214,7 @@ export default function EvaluationPage() {
 
       {questions.length === 0 && summary.length === 0 && !loading && !showCreate && (
         <div className="glass-card" style={{ padding: 32, textAlign: "center" }}>
-          <p style={{ fontSize: 36, marginBottom: 8 }}>🧪</p>
+          <Icons.Flask size={48} color="var(--accent-blue)" style={{ marginBottom: 16 }} />
           <p style={{ color: "var(--text-muted)" }}>Add research questions, then run evaluation against your papers.</p>
         </div>
       )}

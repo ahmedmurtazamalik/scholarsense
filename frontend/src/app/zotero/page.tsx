@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { zoteroApi } from "@/lib/api";
+import * as Icons from "@/components/Icons";
 
 export default function ZoteroPage() {
   const [apiKey, setApiKey] = useState("");
@@ -62,8 +63,8 @@ export default function ZoteroPage() {
               onChange={(e) => setLibraryId(e.target.value)}
               style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border-color)", background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 14 }}
             />
-            <button className="btn-primary" onClick={handleConnect} disabled={!apiKey || !libraryId}>
-              📚 Connect
+            <button className="btn-primary" onClick={handleConnect} disabled={!apiKey || !libraryId} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <Icons.BookOpen size={14} /> Connect
             </button>
           </div>
           {message && <p style={{ marginTop: 12, fontSize: 13, color: message.includes("failed") ? "var(--accent-rose)" : "var(--accent-cyan)" }}>{message}</p>}
@@ -72,9 +73,19 @@ export default function ZoteroPage() {
         <>
           {/* Sync controls */}
           <div className="glass-card" style={{ padding: 20, marginBottom: 24, display: "flex", gap: 12, alignItems: "center" }}>
-            <span style={{ color: "var(--accent-cyan)", fontWeight: 600 }}>✅ Connected</span>
-            <button className="btn-primary" onClick={() => handleSync()} disabled={syncing}>
-              {syncing ? "Syncing..." : "🔄 Sync All Papers"}
+            <span style={{ color: "var(--accent-cyan)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Icons.CheckCircle size={14} color="var(--accent-cyan)" /> Connected
+            </span>
+            <button className="btn-primary" onClick={() => handleSync()} disabled={syncing} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              {syncing ? (
+                <>
+                  <Icons.Loader2 size={14} /> Syncing...
+                </>
+              ) : (
+                <>
+                  <Icons.RefreshCw size={14} /> Sync All Papers
+                </>
+              )}
             </button>
             {syncResult && <span style={{ fontSize: 13, color: "var(--accent-cyan)" }}>{syncResult}</span>}
           </div>
@@ -86,9 +97,12 @@ export default function ZoteroPage() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
                 {collections.map((c: any) => (
                   <div key={c.key} className="glass-card" style={{ padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>📁 {c.name}</div>
-                      <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{c.num_items} items</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <Icons.Folder size={18} color="var(--accent-blue)" />
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>{c.name}</div>
+                        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{c.num_items} items</div>
+                      </div>
                     </div>
                     <button className="btn-secondary" onClick={() => handleSync(c.key)} style={{ padding: "6px 12px", fontSize: 12 }}>
                       Sync

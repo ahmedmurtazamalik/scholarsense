@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, KeyboardEvent } from "react";
 import { screeningApi, ScreeningCriteria, ScreeningResult, papersApi, Paper } from "@/lib/api";
+import * as Icons from "@/components/Icons";
 
 // ── Tag chip input ─────────────────────────────────────────────────
 function TagInput({
@@ -330,8 +331,8 @@ export default function ScreeningPage() {
           <h1 style={{ fontSize: 28, fontWeight: 800 }}><span className="gradient-text">Screening</span></h1>
           <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Phase 1 — Define who qualifies. Run to filter your paper library.</p>
         </div>
-        <button className="btn-primary" onClick={() => { if (showCreate) resetForm(); setShowCreate(!showCreate); }}>
-          {showCreate ? "✕ Cancel" : "➕ New Criteria Set"}
+        <button className="btn-primary" onClick={() => { if (showCreate) resetForm(); setShowCreate(!showCreate); }} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          {showCreate ? <><Icons.X size={14} /> Cancel</> : <><Icons.Plus size={14} /> New Criteria Set</>}
         </button>
       </div>
 
@@ -405,8 +406,8 @@ export default function ScreeningPage() {
 
             {/* Domain */}
             <div>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>
-                🏛️ Domain / Field
+              <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                <Icons.Folder size={14} color="var(--text-secondary)" /> Domain / Field
               </label>
               <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>
                 Narrow to a specific research field (optional).
@@ -417,7 +418,8 @@ export default function ScreeningPage() {
           </div>
 
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <button className="btn-primary" onClick={handleSave} disabled={!name}>
+            <button className="btn-primary" onClick={handleSave} disabled={!name} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+               <Icons.Save size={14} />
                {editingId ? "Update Criteria" : "Save Criteria Set"}
             </button>
             <button className="btn-secondary" onClick={() => { setShowCreate(false); resetForm(); }}>
@@ -473,13 +475,21 @@ export default function ScreeningPage() {
                     className="btn-primary"
                     onClick={() => handleRun(c.id)}
                     disabled={running}
-                    style={{ fontSize: 13, padding: "8px 16px", flex: 1 }}
+                    style={{ fontSize: 13, padding: "8px 16px", flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                   >
-                    {running && activeCriteriaId === c.id ? "⏳ Running…" : "▶️ Run Screening"}
+                    {running && activeCriteriaId === c.id ? (
+                      <><Icons.Loader2 size={13} /> Running…</>
+                    ) : (
+                      <><Icons.Play size={13} /> Run Screening</>
+                    )}
                   </button>
-                  <button className="btn-secondary" onClick={() => handleEdit(c)} style={{ fontSize: 13, padding: "8px 14px" }}>✏️</button>
+                  <button className="btn-secondary" onClick={() => handleEdit(c)} style={{ fontSize: 13, padding: "8px 14px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                    <Icons.Edit3 size={13} />
+                  </button>
                   <button className="btn-secondary" onClick={() => handleDelete(c.id)}
-                    style={{ fontSize: 13, padding: "8px 14px", color: "var(--accent-rose)" }}>🗑️</button>
+                    style={{ fontSize: 13, padding: "8px 14px", color: "var(--accent-rose)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                    <Icons.Trash2 size={13} color="var(--accent-rose)" />
+                  </button>
                 </div>
               </div>
             );
@@ -544,8 +554,12 @@ export default function ScreeningPage() {
                     </div>
                   </td>
                   <td>
-                    <span className={`badge ${r.passed ? "badge-included" : "badge-excluded"}`}>
-                      {r.passed ? "✅ Passed" : "Excluded"}
+                    <span className={`badge ${r.passed ? "badge-included" : "badge-excluded"}`} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      {r.passed ? (
+                        <><Icons.CheckCircle size={12} /> Passed</>
+                      ) : (
+                        <><Icons.XCircle size={12} /> Excluded</>
+                      )}
                     </span>
                   </td>
                   <td>
@@ -572,12 +586,14 @@ export default function ScreeningPage() {
 
       {criteria.length === 0 && results.length === 0 && !loading && !showCreate && (
         <div className="glass-card" style={{ padding: 48, textAlign: "center" }}>
-          <p style={{ fontSize: 48, marginBottom: 12 }}>🎯</p>
+          <Icons.Search size={48} color="var(--accent-blue)" style={{ marginBottom: 16 }} />
           <p style={{ fontWeight: 700, fontSize: 18, marginBottom: 8 }}>No criteria sets yet</p>
           <p style={{ color: "var(--text-muted)", marginBottom: 20 }}>
             Create your first screening criteria set to start filtering your papers automatically.
           </p>
-          <button className="btn-primary" onClick={() => setShowCreate(true)}>➕ Create First Criteria Set</button>
+          <button className="btn-primary" onClick={() => setShowCreate(true)} style={{ display: "inline-flex", alignItems: "center", gap: 6, margin: "0 auto" }}>
+            <Icons.Plus size={14} /> Create First Criteria Set
+          </button>
         </div>
       )}
     </div>

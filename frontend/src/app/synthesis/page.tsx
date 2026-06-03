@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { synthesisApi, ClusterResult } from "@/lib/api";
+import * as Icons from "@/components/Icons";
 
 // ── Palette ────────────────────────────────────────────────────────
 const CLUSTER_COLORS = [
@@ -181,10 +182,10 @@ function BarChart({ data }: { data: { year: number; count: number }[] }) {
 }
 
 // ── Stat card ──────────────────────────────────────────────────────
-function StatCard({ icon, value, label, color }: { icon: string; value: string | number; label: string; color: string }) {
+function StatCard({ Icon, value, label, color }: { Icon: any; value: string | number; label: string; color: string }) {
   return (
     <div className="glass-card" style={{ padding: "18px 22px", display: "flex", alignItems: "center", gap: 14 }}>
-      <div style={{ fontSize: 28 }}>{icon}</div>
+      <Icon size={28} color={color} />
       <div>
         <div style={{ fontSize: 26, fontWeight: 800, color, lineHeight: 1 }}>{value}</div>
         <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{label}</div>
@@ -245,7 +246,7 @@ function ClusterCard({ cluster, index }: { cluster: ClusterResult; index: number
           </div>
           <h3 style={{ fontWeight: 700, fontSize: 14, color }}>{cluster.label}</h3>
         </div>
-        <span className="badge badge-processed" style={{ fontSize: 10 }}>{cluster.size} papers</span>
+        <span className="badge badge-processed">{cluster.size} papers</span>
       </div>
 
       {/* Bar showing cluster size relative to others */}
@@ -256,9 +257,9 @@ function ClusterCard({ cluster, index }: { cluster: ClusterResult; index: number
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {shown.map((title, j) => (
           <div key={j} style={{ fontSize: 11, color: "var(--text-muted)", padding: "4px 0",
-            borderBottom: "1px solid var(--border-color)", display: "flex", gap: 6 }}>
-            <span style={{ color, flexShrink: 0 }}>📄</span>
-            {title.slice(0, 70)}{title.length > 70 && "…"}
+            borderBottom: "1px solid var(--border-color)", display: "flex", gap: 6, alignItems: "center" }}>
+            <Icons.FileText size={12} color={color} style={{ flexShrink: 0 }} />
+            <span>{title.slice(0, 70)}{title.length > 70 && "…"}</span>
           </div>
         ))}
       </div>
@@ -267,9 +268,9 @@ function ClusterCard({ cluster, index }: { cluster: ClusterResult; index: number
         <button
           onClick={() => setExpanded(!expanded)}
           style={{ marginTop: 8, background: "none", border: "none", cursor: "pointer",
-            fontSize: 11, color: color, fontWeight: 600 }}
+            fontSize: 11, color: color, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}
         >
-          {expanded ? "▲ Show less" : `▼ +${cluster.paper_titles.length - 3} more papers`}
+          {expanded ? <><Icons.ChevronUp size={12} /> Show less</> : <><Icons.ChevronDown size={12} /> +{cluster.paper_titles.length - 3} more papers</>}
         </button>
       )}
     </div>
@@ -335,11 +336,11 @@ export default function SynthesisPage() {
   const totalPapers = aggData?.total_papers ?? (yearData.reduce((s, d) => s + d.count, 0) || null);
 
   const TABS = [
-    { key: "overview", label: "📊 Overview" },
-    { key: "methods", label: "🔬 Methods" },
-    { key: "years", label: "📈 Year Trends" },
-    { key: "patterns", label: "🧬 Clusters" },
-    { key: "limitations", label: "⚠️ Limitations" },
+    { key: "overview", label: "Overview", Icon: Icons.Dashboard },
+    { key: "methods", label: "Methods", Icon: Icons.Flask },
+    { key: "years", label: "Year Trends", Icon: Icons.TrendingUp },
+    { key: "patterns", label: "Clusters", Icon: Icons.Sparkles },
+    { key: "limitations", label: "Limitations", Icon: Icons.AlertTriangle },
   ];
 
   return (
@@ -354,37 +355,41 @@ export default function SynthesisPage() {
       {(totalPapers || yearRange !== "—" || methodsData.length > 0) && !loading && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 12, marginBottom: 28 }}>
           {totalPapers != null && (
-            <StatCard icon="📄" value={totalPapers} label="Papers Analysed" color="var(--accent-blue)" />
+            <StatCard Icon={Icons.FileText} value={totalPapers} label="Papers Analysed" color="var(--accent-blue)" />
           )}
           {methodsData.length > 0 && (
-            <StatCard icon="🔬" value={methodsData.length} label="Distinct Methods" color="var(--accent-purple)" />
+            <StatCard Icon={Icons.Flask} value={methodsData.length} label="Distinct Methods" color="var(--accent-purple)" />
           )}
           {yearRange !== "—" && (
-            <StatCard icon="📅" value={yearRange} label="Year Span" color="var(--accent-cyan)" />
+            <StatCard Icon={Icons.Calendar} value={yearRange} label="Year Span" color="var(--accent-cyan)" />
           )}
           {peakYear && (
-            <StatCard icon="🏆" value={peakYear} label="Peak Year" color="var(--accent-amber)" />
+            <StatCard Icon={Icons.Trophy} value={peakYear} label="Peak Year" color="var(--accent-amber)" />
           )}
         </div>
       )}
 
       {/* Tabs */}
       <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            className={activeTab === tab.key ? "btn-primary" : "btn-secondary"}
-            onClick={() => setActiveTab(tab.key as typeof activeTab)}
-            style={{ padding: "10px 18px", fontSize: 13 }}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {TABS.map((tab) => {
+          const TabIcon = tab.Icon;
+          return (
+            <button
+              key={tab.key}
+              className={activeTab === tab.key ? "btn-primary" : "btn-secondary"}
+              onClick={() => setActiveTab(tab.key as typeof activeTab)}
+              style={{ padding: "10px 18px", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
+              <TabIcon size={14} />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {loading ? (
         <div className="glass-card" style={{ padding: 40, textAlign: "center" }}>
-          <div style={{ fontSize: 36, marginBottom: 8 }}>⏳</div>
+          <Icons.Loader2 size={36} color="var(--text-muted)" style={{ marginBottom: 12, display: "inline-block" }} />
           <p style={{ color: "var(--text-muted)" }}>Loading synthesis data…</p>
         </div>
       ) : (
@@ -395,14 +400,18 @@ export default function SynthesisPage() {
               {/* Methods donut + year bars side by side */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
                 <div className="glass-card" style={{ padding: 24 }}>
-                  <h3 style={{ fontWeight: 700, marginBottom: 16 }}>🔬 Methods Distribution</h3>
+                  <h3 style={{ fontWeight: 700, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+                    <Icons.Flask size={18} color="var(--accent-purple)" /> Methods Distribution
+                  </h3>
                   {methodsData.length === 0
                     ? <p style={{ color: "var(--text-muted)", fontSize: 13 }}>No data yet. Run evaluation first.</p>
                     : <DonutChart data={methodsData} maxShow={6} />
                   }
                 </div>
                 <div className="glass-card" style={{ padding: 24 }}>
-                  <h3 style={{ fontWeight: 700, marginBottom: 16 }}>📈 Year Trends</h3>
+                  <h3 style={{ fontWeight: 700, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+                    <Icons.TrendingUp size={18} color="var(--accent-blue)" /> Year Trends
+                  </h3>
                   {yearData.length === 0
                     ? <p style={{ color: "var(--text-muted)", fontSize: 13 }}>No year data available.</p>
                     : <BarChart data={yearData} />
@@ -413,8 +422,9 @@ export default function SynthesisPage() {
               {/* Aggregation table */}
               {aggData && aggData.rows.length > 0 && (
                 <div className="glass-card" style={{ overflow: "auto" }}>
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-color)" }}>
-                    <h3 style={{ fontWeight: 700 }}>Cross-Paper Comparison ({aggData.total_papers} papers)</h3>
+                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-color)", display: "flex", alignItems: "center", gap: 8 }}>
+                    <Icons.Table size={18} color="var(--accent-cyan)" />
+                    <h3 style={{ fontWeight: 700, margin: 0 }}>Cross-Paper Comparison ({aggData.total_papers} papers)</h3>
                   </div>
                   <table>
                     <thead>
@@ -453,13 +463,15 @@ export default function SynthesisPage() {
           {activeTab === "methods" && (
             <div className="glass-card" style={{ padding: 28 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-                <h3 style={{ fontWeight: 700, fontSize: 17 }}>🔬 Methods & Techniques Distribution</h3>
+                <h3 style={{ fontWeight: 700, fontSize: 17, display: "flex", alignItems: "center", gap: 8, margin: 0 }}>
+                  <Icons.Flask size={18} color="var(--accent-purple)" /> Methods & Techniques Distribution
+                </h3>
                 <div style={{ display: "flex", gap: 8 }}>
                   {(["donut", "bars"] as const).map((m) => (
                     <button key={m} onClick={() => setViewMode(m)}
                       className={viewMode === m ? "btn-primary" : "btn-secondary"}
                       style={{ fontSize: 12, padding: "6px 14px" }}>
-                      {m === "donut" ? "🍩 Donut" : "📊 Bars"}
+                      {m === "donut" ? "Donut" : "Bars"}
                     </button>
                   ))}
                 </div>
@@ -476,25 +488,36 @@ export default function SynthesisPage() {
           {/* ── YEARS TAB ── */}
           {activeTab === "years" && (
             <div className="glass-card" style={{ padding: 28 }}>
-              <h3 style={{ fontWeight: 700, fontSize: 17, marginBottom: 20 }}>📈 Publication Year Trends</h3>
+              <h3 style={{ fontWeight: 700, fontSize: 17, marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
+                <Icons.TrendingUp size={18} color="var(--accent-blue)" /> Publication Year Trends
+              </h3>
               {yearData.length === 0
                 ? <p style={{ color: "var(--text-muted)", fontSize: 13 }}>No year data available.</p>
                 : (
                   <>
                     <div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
-                      <div style={{ padding: "10px 18px", borderRadius: 8, background: "rgba(79,142,255,0.08)", border: "1px solid rgba(79,142,255,0.2)" }}>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 2 }}>Year Span</div>
-                        <div style={{ fontWeight: 700, color: "var(--accent-blue)" }}>{yearRange}</div>
+                      <div style={{ padding: "10px 18px", borderRadius: 8, background: "rgba(79,142,255,0.08)", border: "1px solid rgba(79,142,255,0.2)", display: "flex", alignItems: "center", gap: 10 }}>
+                        <Icons.Calendar size={18} color="var(--accent-blue)" />
+                        <div>
+                          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 2 }}>Year Span</div>
+                          <div style={{ fontWeight: 700, color: "var(--accent-blue)" }}>{yearRange}</div>
+                        </div>
                       </div>
                       {peakYear && (
-                        <div style={{ padding: "10px 18px", borderRadius: 8, background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)" }}>
-                          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 2 }}>Peak Year</div>
-                          <div style={{ fontWeight: 700, color: "var(--accent-amber)" }}>{peakYear}</div>
+                        <div style={{ padding: "10px 18px", borderRadius: 8, background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", display: "flex", alignItems: "center", gap: 10 }}>
+                          <Icons.Trophy size={18} color="var(--accent-amber)" />
+                          <div>
+                            <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 2 }}>Peak Year</div>
+                            <div style={{ fontWeight: 700, color: "var(--accent-amber)" }}>{peakYear}</div>
+                          </div>
                         </div>
                       )}
-                      <div style={{ padding: "10px 18px", borderRadius: 8, background: "rgba(6,214,160,0.08)", border: "1px solid rgba(6,214,160,0.2)" }}>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 2 }}>Total Points</div>
-                        <div style={{ fontWeight: 700, color: "var(--accent-cyan)" }}>{yearData.reduce((s, d) => s + d.count, 0)}</div>
+                      <div style={{ padding: "10px 18px", borderRadius: 8, background: "rgba(6,214,160,0.08)", border: "1px solid rgba(6,214,160,0.2)", display: "flex", alignItems: "center", gap: 10 }}>
+                        <Icons.CheckCircle size={18} color="var(--accent-cyan)" />
+                        <div>
+                          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 2 }}>Total Points</div>
+                          <div style={{ fontWeight: 700, color: "var(--accent-cyan)" }}>{yearData.reduce((s, d) => s + d.count, 0)}</div>
+                        </div>
                       </div>
                     </div>
                     <BarChart data={yearData} />
@@ -518,8 +541,8 @@ export default function SynthesisPage() {
                     </button>
                   ))}
                 </div>
-                <button className="btn-primary" onClick={() => loadTab("patterns")} style={{ fontSize: 13, padding: "8px 16px" }}>
-                  🧬 Regenerate
+                <button className="btn-primary" onClick={() => loadTab("patterns")} style={{ fontSize: 13, padding: "8px 16px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <Icons.Sparkles size={14} /> Regenerate
                 </button>
                 {clusters.length > 0 && (
                   <div style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-muted)" }}>
@@ -530,7 +553,7 @@ export default function SynthesisPage() {
 
               {clusters.length === 0 ? (
                 <div className="glass-card" style={{ padding: 32, textAlign: "center" }}>
-                  <p style={{ fontSize: 36, marginBottom: 8 }}>🧬</p>
+                  <Icons.Sparkles size={48} color="var(--accent-blue)" style={{ marginBottom: 16 }} />
                   <p style={{ color: "var(--text-muted)" }}>No cluster data yet. Click Regenerate above.</p>
                 </div>
               ) : (
@@ -569,7 +592,7 @@ export default function SynthesisPage() {
             <div>
               {limitations.length === 0 ? (
                 <div className="glass-card" style={{ padding: 32, textAlign: "center" }}>
-                  <p style={{ fontSize: 36, marginBottom: 8 }}>⚠️</p>
+                  <Icons.AlertTriangle size={48} color="var(--accent-amber)" style={{ marginBottom: 16 }} />
                   <p style={{ color: "var(--text-muted)" }}>
                     No limitations extracted yet. Add a Research Question about limitations in the Evaluation phase first.
                   </p>
@@ -577,15 +600,21 @@ export default function SynthesisPage() {
               ) : (
                 <>
                   <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-                    <div className="glass-card" style={{ padding: "10px 18px" }}>
-                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Total Limitations </span>
-                      <span style={{ fontWeight: 700, color: "var(--accent-amber)" }}>{limitations.length}</span>
+                    <div className="glass-card" style={{ padding: "10px 18px", display: "flex", alignItems: "center", gap: 8 }}>
+                      <Icons.AlertTriangle size={16} color="var(--accent-amber)" />
+                      <div>
+                        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Total Limitations </span>
+                        <span style={{ fontWeight: 700, color: "var(--accent-amber)" }}>{limitations.length}</span>
+                      </div>
                     </div>
-                    <div className="glass-card" style={{ padding: "10px 18px" }}>
-                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>From </span>
-                      <span style={{ fontWeight: 700, color: "var(--accent-blue)" }}>
-                        {new Set(limitations.map((l) => l.paper_title)).size} papers
-                      </span>
+                    <div className="glass-card" style={{ padding: "10px 18px", display: "flex", alignItems: "center", gap: 8 }}>
+                      <Icons.FileText size={16} color="var(--accent-blue)" />
+                      <div>
+                        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>From </span>
+                        <span style={{ fontWeight: 700, color: "var(--accent-blue)" }}>
+                          {new Set(limitations.map((l) => l.paper_title)).size} papers
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -593,10 +622,9 @@ export default function SynthesisPage() {
                       <div key={i} className="glass-card" style={{ padding: 18, borderLeft: "4px solid var(--accent-amber)" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
                           <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>{lim.paper_title}</div>
-                          <span style={{
-                            fontSize: 10, padding: "2px 9px", borderRadius: 12, fontWeight: 700,
-                            background: "rgba(251,191,36,0.12)", color: "var(--accent-amber)", flexShrink: 0, marginLeft: 8,
-                          }}>⚠️ Limitation</span>
+                          <span className="badge badge-pending" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            <Icons.AlertTriangle size={12} color="var(--accent-amber)" /> Limitation
+                          </span>
                         </div>
                         <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: lim.source_quote ? 10 : 0 }}>
                           {lim.limitation}

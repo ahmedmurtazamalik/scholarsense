@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { matrixApi, extractionApi, ExtractionSchema, Matrix } from "@/lib/api";
+import * as Icons from "@/components/Icons";
 
 export default function MatrixPage() {
   const [schemas, setSchemas] = useState<ExtractionSchema[]>([]);
@@ -46,8 +47,12 @@ export default function MatrixPage() {
           <option value="">Select extraction schema...</option>
           {schemas.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
-        <button className="btn-primary" onClick={handleBuild} disabled={!selectedSchema || loading}>
-          {loading ? "Building..." : "📋 Build Matrix"}
+        <button className="btn-primary" onClick={handleBuild} disabled={!selectedSchema || loading} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          {loading ? (
+            "Building..."
+          ) : (
+            <><Icons.Table size={14} /> Build Matrix</>
+          )}
         </button>
       </div>
 
@@ -88,8 +93,8 @@ export default function MatrixPage() {
       )}
 
       {!matrix && !loading && (
-        <div className="glass-card" style={{ padding: 32, textAlign: "center" }}>
-          <p style={{ fontSize: 36, marginBottom: 8 }}>📋</p>
+        <div className="glass-card" style={{ padding: 48, textAlign: "center" }}>
+          <Icons.Table size={48} color="var(--accent-blue)" style={{ marginBottom: 16 }} />
           <p style={{ color: "var(--text-muted)" }}>Select a schema and build a matrix to see cross-paper comparisons.</p>
         </div>
       )}

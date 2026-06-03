@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { conflictsApi, Conflict } from "@/lib/api";
+import * as Icons from "@/components/Icons";
 
 export default function ConflictsPage() {
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
@@ -31,8 +32,12 @@ export default function ConflictsPage() {
           onChange={(e) => setFieldName(e.target.value)}
           style={{ flex: 1, padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border-color)", background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 14 }}
         />
-        <button className="btn-primary" onClick={detect} disabled={loading}>
-          {loading ? "Detecting..." : "⚠️ Detect Conflicts"}
+        <button className="btn-primary" onClick={detect} disabled={loading} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          {loading ? (
+            "Detecting..."
+          ) : (
+            <><Icons.AlertTriangle size={14} /> Detect Conflicts</>
+          )}
         </button>
       </div>
 
@@ -41,8 +46,9 @@ export default function ConflictsPage() {
           {conflicts.map((c, i) => (
             <div key={i} className="glass-card" style={{ padding: 20, borderLeft: "4px solid var(--accent-rose)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <h3 style={{ fontWeight: 700, fontSize: 16 }}>
-                  <span style={{ color: "var(--accent-rose)" }}>⚠️</span> {c.topic}
+                <h3 style={{ fontWeight: 700, fontSize: 16, display: "flex", alignItems: "center", gap: 8 }}>
+                  <Icons.AlertTriangle size={18} color="var(--accent-rose)" />
+                  <span>{c.topic}</span>
                 </h3>
                 <span className="badge badge-excluded">Conflict</span>
               </div>
@@ -62,8 +68,8 @@ export default function ConflictsPage() {
       )}
 
       {conflicts.length === 0 && !loading && (
-        <div className="glass-card" style={{ padding: 32, textAlign: "center" }}>
-          <p style={{ fontSize: 36, marginBottom: 8 }}>⚠️</p>
+        <div className="glass-card" style={{ padding: 48, textAlign: "center" }}>
+          <Icons.AlertTriangle size={48} color="var(--accent-rose)" style={{ marginBottom: 16 }} />
           <p style={{ color: "var(--text-muted)" }}>Run conflict detection to find contradictory findings in your extracted data.</p>
         </div>
       )}
